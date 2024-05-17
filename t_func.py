@@ -35,10 +35,10 @@ def check_and_create_tables():
                         known_recipes JSONB
                       )''')
     cursor.execute('''CREATE TABLE IF NOT EXISTS inventory (
-                        user_id INTEGER REFERENCES users(id),
+                        character_id INTEGER REFERENCES characters(id),
                         ingredient_id INTEGER,
                         quantity INTEGER,
-                        PRIMARY KEY (user_id, ingredient_id)
+                        PRIMARY KEY (character_id, ingredient_id)
                       )''')
     cursor.execute('''CREATE TABLE IF NOT EXISTS ingredients (
                         id SERIAL PRIMARY KEY,
@@ -68,8 +68,12 @@ def my_characters_message(message):
     # Отправляем сообщение с информацией о выбранном персонаже или о его отсутствии
     if selected_character:
         cursor.execute("SELECT name, skill FROM characters WHERE id = %s", (selected_character,))
-        selected_character_name, selected_character_skill = cursor.fetchone()
-        bot.send_message(message.chat.id, f"Выбранный персонаж: \n{selected_character_name}, [{selected_character_skill}] - лвл алхимии.")
+        selected_character_data = cursor.fetchone()
+        if selected_character_data:
+            selected_character_name, selected_character_skill = selected_character_data
+            bot.send_message(message.chat.id, f"Выбранный персонаж: \n{selected_character_name}, [{selected_character_skill}] - лвл алхимии.")
+        else:
+            bot.send_message(message.chat.id,f"Выбранный персонаж был удалён")
     else:
         bot.send_message(message.chat.id, "У тебя нет выбранного персонажа.")
 
@@ -145,7 +149,7 @@ def character_menu(character_id, chat_id, bot):
         bot.send_message(chat_id, 'Произошла ошибка при получении данных о персонаже.')
 
 def character_choose(character_id, tg_id, chat_id, bot):
-    cursor.execute('UPDATE users SET current_character = %s WHERE TG_ID = %s', (character_id, tg_id))
+    cursor.execute('UPDATE users SET current_character_id = %s WHERE telegram_id = %s', (character_id, tg_id))
     conn.commit()
     bot.send_message(chat_id, 'Персонаж выбран как текущий.')
 
@@ -193,11 +197,11 @@ def delete_character_check(character_id, chat_id, bot):
 
 
 def delete_character_confirm(character_id, chat_id, bot):
-    cursor.execute('DELETE FROM characters WHERE ID = ?', (character_id,))
+    cursor.execute('DELETE FROM characters WHERE ID = %s', (character_id,))
     conn.commit()
-    #cursor.execute('DELETE FROM cauldron WHERE id_character = ?', (character_id,))
+    #cursor.execute('DELETE FROM cauldron WHERE id_character = %s', (character_id,))
     #conn.commit()
-    cursor.execute('DELETE FROM inventory WHERE id_character = ?', (character_id,))
+    cursor.execute('DELETE FROM inventory WHERE character_id = %s', (character_id,))
     conn.commit()
     bot.send_message(chat_id, 'Персонаж удален.')
     bot.send_animation(chat_id, 'https://c.tenor.com/2bAKt_bnAYMAAAAd/press-f-mg.gif')
